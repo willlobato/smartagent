@@ -1,0 +1,11 @@
+classFullName:
+  net/pupunha/compl/Complemento:
+    methods:
+      executar:
+        parameters:
+          - java.lang.String
+          - java.lang.Long
+      execurar2:
+        parameters:
+
+logFile: /Users/willlobato/Development/logando.log
