@@ -14,21 +14,18 @@ public class SmartTransformClass implements ClassFileTransformer {
 
     private Configuration configuration;
 
-    public SmartTransformClass(Configuration configuration) {
-        this.configuration = configuration;
-    }
-
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
         if (configuration != null && configuration.getClassFullName().get(className) != null) {
             try {
                 ClassPool cp = ClassPool.getDefault();
-                cp.insertClassPath(new ByteArrayClassPath(className, classfileBuffer));
-
                 String classReplace = className.replaceAll("[/]", ".");
+                cp.appendClassPath(new LoaderClassPath(loader));
+                cp.insertClassPath(new ByteArrayClassPath(classReplace, classfileBuffer));
                 CtClass cc = cp.get(classReplace);
 
                 ClassConfiguration classConfiguration = configuration.getClassFullName().get(className);
+
                 Map<String, MethodConfiguration> methods = classConfiguration.getMethods();
                 if (methods != null && !methods.isEmpty()) {
                     for (String method : methods.keySet()) {
@@ -72,6 +69,7 @@ public class SmartTransformClass implements ClassFileTransformer {
                                 ctMethod.insertBefore("$_elapsedTime = System.currentTimeMillis();");
 
                                 StringBuilder sb = new StringBuilder("{");
+
                                 sb.append("$_elapsedTime = System.currentTimeMillis() - $_elapsedTime;");
                                 sb.append("net.pupunha.smartagent.jmx.JMXUtil.updateMetric(\"")
                                         .append(className).append("\", \"")
@@ -80,7 +78,7 @@ public class SmartTransformClass implements ClassFileTransformer {
                                 sb.append("net.pupunha.smartagent.log.LogWriter.log(\"")
                                         .append(configuration.getLogFile()).append("\", \"")
                                         .append(className).append("\", \"")
-                                        .append(methodFullName).append("\", $_elapsedTime);");
+                                        .append(methodFullName).append("\", $_elapsedTime, $args);");
                                 sb.append("}");
                                 ctMethod.insertAfter(sb.toString());
                             }
@@ -89,6 +87,8 @@ public class SmartTransformClass implements ClassFileTransformer {
                 }
 
                 byte[] byteCode = cc.toBytecode();
+
+//                cc.writeFile("/Volumes/DOCUMENTOS/JAVA/Class");
                 cc.detach();
                 return byteCode;
             } catch (Exception ex) {
@@ -96,5 +96,9 @@ public class SmartTransformClass implements ClassFileTransformer {
             }
         }
         return null;
+    }
+
+    public SmartTransformClass(Configuration configuration) {
+        this.configuration = configuration;
     }
 }
